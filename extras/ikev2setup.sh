@@ -685,20 +685,26 @@ create_client_cert() {
 }
 
 create_p12_password() {
-  p12_password_file="${export_dir}vpnclient.p12.password"
-  if grep -qs '^IKEV2_CONFIG_PASSWORD=.\+' "$p12_password_file"; then
-    . "$p12_password_file"
+  config_file="/etc/ipsec.d/.vpnconfig"
+  config_file_old="${export_dir}vpnclient.p12.password"
+  update_config=0
+  if grep -qs '^IKEV2_CONFIG_PASSWORD=.\+' "$config_file"; then
+    . "$config_file"
     p12_password="$IKEV2_CONFIG_PASSWORD"
+  elif grep -qs '^IKEV2_CONFIG_PASSWORD=.\+' "$config_file_old"; then
+    . "$config_file_old"
+    p12_password="$IKEV2_CONFIG_PASSWORD"
+    /bin/rm -f "$config_file_old"
+    update_config=1
   else
     p12_password=$(LC_CTYPE=C tr -dc 'A-HJ-NPR-Za-km-z2-9' </dev/urandom 2>/dev/null | head -c 18)
     [ -z "$p12_password" ] && exiterr "Could not generate a random password for .p12 file."
-    if [ ! -f "$p12_password_file" ]; then
-      printf '%s\n' "IKEV2_CONFIG_PASSWORD=$p12_password" > "$p12_password_file"
-      if [ "$export_to_home_dir" = "1" ]; then
-        chown "$SUDO_USER:$SUDO_USER" "$p12_password_file"
-      fi
-      chmod 600 "$p12_password_file"
-    fi
+    update_config=1
+  fi
+  if [ "$update_config" = "1" ]; then
+    mkdir -p /etc/ipsec.d
+    printf '%s\n' "IKEV2_CONFIG_PASSWORD=$p12_password" >> "$config_file"
+    chmod 600 "$config_file"
   fi
 }
 
