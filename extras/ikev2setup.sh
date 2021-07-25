@@ -581,6 +581,9 @@ check_mobike_support() {
       mobike_support=0
     fi
   fi
+  if uname -a | grep -qi qnap; then
+    mobike_support=0
+  fi
   if [ "$mobike_support" = "1" ]; then
     bigecho2 "Checking for MOBIKE support... available"
   else
